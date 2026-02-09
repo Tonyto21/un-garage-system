@@ -1,0 +1,35 @@
+<div id="create-workorder-modal-content">
+    <h3 style="margin-bottom: 20px; color: #333;">Create Work Order</h3>
+    <form id="create-workorder-form">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="workorder-request"><i class="fas fa-clipboard-list"></i> Service Request *</label>
+                <select id="workorder-request" required>
+                    <option value="">Select Approved Request</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="workorder-mechanic"><i class="fas fa-user-cog"></i> Assign Mechanic *</label>
+                <select id="workorder-mechanic" required>
+                    <option value="">Select Mechanic</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group form-full">
+                <label for="workorder-instructions"><i class="fas fa-file-alt"></i> Instructions</label>
+                <textarea id="workorder-instructions" rows="4" placeholder="Special instructions for the mechanic..."></textarea>
+            </div>
+        </div>
+        
+        <div class="form-actions">
+            <button type="button" class="btn-secondary" onclick="app.hideModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button type="submit" class="btn-primary">
+                <i class="fas fa-tools"></i> Create Work Order
+            </button>
+        </div>
+    </form>
+</div>

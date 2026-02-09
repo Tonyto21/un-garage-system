@@ -5,13 +5,14 @@ const db = new sqlite3.Database(path.join(__dirname, '..', 'database.sqlite'));
 
 // Create tables
 db.serialize(() => {
-    // Users table
+       // Users table
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         role TEXT CHECK(role IN ('admin', 'requestor', 'mechanic')) NOT NULL,
+        agency TEXT DEFAULT 'UN House Liberia',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 

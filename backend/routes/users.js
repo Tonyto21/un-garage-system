@@ -17,10 +17,10 @@ router.get('/', auth, requireRole(['admin']), async (req, res) => {
 // Create user (Admin only)
 router.post('/', auth, requireRole(['admin']), async (req, res) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password, role, agency } = req.body;
         
         if (!name || !email || !password || !role) {
-            return res.status(400).json({ error: 'All fields are required' });
+            return res.status(400).json({ error: 'Name, email, password and role are required' });
         }
 
         const existingUser = await User.findByEmail(email);
@@ -28,7 +28,7 @@ router.post('/', auth, requireRole(['admin']), async (req, res) => {
             return res.status(400).json({ error: 'User already exists' });
         }
 
-        const user = await User.create({ name, email, password, role });
+        const user = await User.create({ name, email, password, role, agency });
         res.status(201).json(user);
     } catch (error) {
         console.error('Create user error:', error);

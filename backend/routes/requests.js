@@ -97,5 +97,14 @@ router.get('/stats', auth, requireRole(['admin']), async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
-
+// Get agency statistics (Admin only)
+router.get('/agency-stats', auth, requireRole(['admin']), async (req, res) => {
+    try {
+        const stats = await ServiceRequest.getAgencyStats();
+        res.json(stats);
+    } catch (error) {
+        console.error('Get agency stats error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 module.exports = router;

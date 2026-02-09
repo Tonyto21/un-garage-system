@@ -1,0 +1,60 @@
+<div id="create-user-modal-content">
+    <h3 style="margin-bottom: 20px; color: #333;">Create New User</h3>
+    <form id="create-user-form">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="new-user-name"><i class="fas fa-user"></i> Full Name *</label>
+                <input type="text" id="new-user-name" placeholder="John Doe" required>
+            </div>
+            <div class="form-group">
+                <label for="new-user-email"><i class="fas fa-envelope"></i> Email *</label>
+                <input type="email" id="new-user-email" placeholder="john.doe@un.org" required>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="new-user-password"><i class="fas fa-lock"></i> Password *</label>
+                <input type="password" id="new-user-password" placeholder="Minimum 6 characters" required>
+            </div>
+            <div class="form-group">
+                <label for="new-user-role"><i class="fas fa-user-tag"></i> Role *</label>
+                <select id="new-user-role" required>
+                    <option value="">Select Role</option>
+                    <option value="admin">Admin</option>
+                    <option value="requestor">Requestor</option>
+                    <option value="mechanic">Mechanic</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="new-user-agency"><i class="fas fa-building"></i> Agency</label>
+                <select id="new-user-agency">
+                    <option value="UN House Liberia">UN House Liberia</option>
+                    <option value="UNDP Liberia">UNDP Liberia</option>
+                    <option value="UNICEF Liberia">UNICEF Liberia</option>
+                    <option value="WFP Liberia">WFP Liberia</option>
+                    <option value="WHO Liberia">WHO Liberia</option>
+                    <option value="FAO Liberia">FAO Liberia</option>
+                    <option value="UNHCR Liberia">UNHCR Liberia</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="new-user-agency-other"><i class="fas fa-building"></i> Other Agency</label>
+                <input type="text" id="new-user-agency-other" placeholder="Enter agency name" style="display: none;">
+            </div>
+        </div>
+        
+        <div class="form-actions">
+            <button type="button" class="btn-secondary" onclick="app.hideModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button type="submit" class="btn-primary">
+                <i class="fas fa-user-plus"></i> Create User
+            </button>
+        </div>
+    </form>
+</div>

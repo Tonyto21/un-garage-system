@@ -15,38 +15,42 @@ async function seedDatabase() {
     await runQuery('DELETE FROM vehicles');
     await runQuery('DELETE FROM users');
 
-    // Create demo users with the names you specified
+       // Create demo users with the names you specified
     const users = [
         {
             name: 'Shem Namayi',
             email: 'shem.admin@un.org',
             password: await bcrypt.hash('admin123', 10),
-            role: 'admin'
+            role: 'admin',
+            agency: 'Garage Management'
         },
         {
             name: 'James Hoff',
             email: 'james.requestor@un.org',
             password: await bcrypt.hash('requestor123', 10),
-            role: 'requestor'
+            role: 'requestor',
+            agency: 'UNDP Liberia'
         },
         {
             name: 'Joseph Forkpah',
             email: 'joseph.focal@un.org',
             password: await bcrypt.hash('focal123', 10),
-            role: 'requestor'
+            role: 'requestor',
+            agency: 'UNICEF Liberia'
         },
         {
             name: 'Anthony Waweru',
             email: 'anthony.mechanic@un.org',
             password: await bcrypt.hash('mechanic123', 10),
-            role: 'mechanic'
+            role: 'mechanic',
+            agency: 'Garage Management'
         }
     ];
 
     for (const user of users) {
-        await runQuery(
-            'INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)',
-            [user.name, user.email, user.password, user.role]
+              await runQuery(
+            'INSERT INTO users (name, email, password_hash, role, agency) VALUES (?, ?, ?, ?, ?)',
+            [user.name, user.email, user.password, user.role, user.agency]
         );
     }
 

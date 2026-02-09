@@ -16,10 +16,10 @@ class ServiceRequest {
         });
     }
 
-    static async getAll() {
+      static async getAll() {
         return new Promise((resolve, reject) => {
             db.all(`
-                SELECT sr.*, u.name as requestor_name, v.number_plate, v.make, v.model 
+                SELECT sr.*, u.name as requestor_name, u.agency, v.number_plate, v.make, v.model 
                 FROM service_requests sr
                 JOIN users u ON sr.requestor_id = u.id
                 JOIN vehicles v ON sr.vehicle_id = v.id
@@ -31,7 +31,7 @@ class ServiceRequest {
         });
     }
 
-    static async getByRequestorId(requestorId) {
+        static async getByRequestorId(requestorId) {
         return new Promise((resolve, reject) => {
             db.all(`
                 SELECT sr.*, v.number_plate, v.make, v.model 
@@ -45,11 +45,10 @@ class ServiceRequest {
             });
         });
     }
-
-    static async findById(id) {
+        static async findById(id) {
         return new Promise((resolve, reject) => {
             db.get(`
-                SELECT sr.*, u.name as requestor_name, v.number_plate, v.make, v.model 
+                SELECT sr.*, u.name as requestor_name, u.agency, v.number_plate, v.make, v.model 
                 FROM service_requests sr
                 JOIN users u ON sr.requestor_id = u.id
                 JOIN vehicles v ON sr.vehicle_id = v.id
@@ -60,7 +59,6 @@ class ServiceRequest {
             });
         });
     }
-
     static async updateStatus(id, status) {
         return new Promise((resolve, reject) => {
             db.run(
@@ -73,7 +71,26 @@ class ServiceRequest {
             );
         });
     }
-
+    static async getAgencyStats() {
+        return new Promise((resolve, reject) => {
+            db.all(`
+                SELECT u.agency, 
+                       COUNT(*) as total_requests,
+                       SUM(CASE WHEN sr.status = 'submitted' THEN 1 ELSE 0 END) as submitted,
+                       SUM(CASE WHEN sr.status = 'approved' THEN 1 ELSE 0 END) as approved,
+                       SUM(CASE WHEN sr.status = 'rejected' THEN 1 ELSE 0 END) as rejected,
+                       SUM(CASE WHEN sr.status = 'completed' THEN 1 ELSE 0 END) as completed
+                FROM service_requests sr
+                JOIN users u ON sr.requestor_id = u.id
+                WHERE u.agency IS NOT NULL
+                GROUP BY u.agency
+                ORDER BY total_requests DESC
+            `, [], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+    }
     static async getStats() {
         return new Promise((resolve, reject) => {
             db.get(`
