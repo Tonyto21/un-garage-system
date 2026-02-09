@@ -304,6 +304,72 @@ class UNGarageApp {
                 </div>
             </div>
             
+            <div class="dashboard-grid" style="margin-top: 30px;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Performance Metrics</h3>
+                        <div class="card-icon admin">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                    <div id="performance-metrics">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Monthly Trend</h3>
+                        <div class="card-icon admin">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                    </div>
+                    <div id="monthly-trend">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="dashboard-grid" style="margin-top: 30px;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Mechanic Performance</h3>
+                        <div class="card-icon admin">
+                            <i class="fas fa-user-cog"></i>
+                        </div>
+                    </div>
+                    <div id="mechanic-performance">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Vehicle Fleet Overview</h3>
+                        <div class="card-icon admin">
+                            <i class="fas fa-car"></i>
+                        </div>
+                    </div>
+                    <div id="vehicle-fleet">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="dashboard-grid" style="margin-top: 30px;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Agency Requests</h3>
+                        <div class="card-icon admin">
+                            <i class="fas fa-building"></i>
+                        </div>
+                    </div>
+                    <div id="agency-stats">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+            
             <div class="table-container" style="margin-top: 30px;">
                 <div class="table-header">
                     <h3>Recent Service Requests</h3>
@@ -330,23 +396,6 @@ class UNGarageApp {
                 <div id="recent-work-orders-table">
                     <div class="spinner"></div>
                 </div>
-                            </div>
-            
-            <div class="dashboard-grid" style="margin-top: 30px;">
-                <div class="card">
-                    <div class="card-header">
-                        <h3>Agency Requests</h3>
-                        <div class="card-icon admin">
-                            <i class="fas fa-building"></i>
-                        </div>
-                    </div>
-                    <div id="agency-stats">
-                        <div class="spinner" style="margin: 20px auto;"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="table-container" style="margin-top: 30px;">
             </div>
         `;
         
@@ -374,7 +423,115 @@ class UNGarageApp {
             if (vehiclesData) {
                 document.getElementById('vehicles-in-service').textContent = vehiclesData.length || 0;
             }
-                        // Load agency stats
+            
+            // Load dashboard stats
+            const dashboardStats = await this.apiRequest('/stats/dashboard');
+            if (dashboardStats) {
+                // Update existing stats cards
+                document.getElementById('total-requests').textContent = dashboardStats.total_requests || 0;
+                document.getElementById('active-work-orders').textContent = dashboardStats.active_work_orders || 0;
+                document.getElementById('vehicles-in-service').textContent = dashboardStats.vehicles_in_service || 0;
+                document.getElementById('active-mechanics').textContent = dashboardStats.active_mechanics || 0;
+                
+                // Performance metrics
+                const avgDays = dashboardStats.avg_completion_days ? dashboardStats.avg_completion_days.toFixed(1) : 'N/A';
+                const perfHtml = `
+                    <div style="display: grid; gap: 10px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Avg. Completion Time:</span>
+                            <strong>${avgDays} days</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Total Vehicles:</span>
+                            <strong>${dashboardStats.total_vehicles || 0}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Registered Requestors:</span>
+                            <strong>${dashboardStats.total_requestors || 0}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Pending Requests:</span>
+                            <strong>${dashboardStats.pending_requests || 0}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Approval Rate:</span>
+                            <strong>${dashboardStats.total_requests > 0 ? Math.round((dashboardStats.approved_requests / dashboardStats.total_requests) * 100) : 0}%</strong>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('performance-metrics').innerHTML = perfHtml;
+            }
+            
+            // Load monthly trend
+            const monthlyTrend = await this.apiRequest('/stats/monthly-trend');
+            if (monthlyTrend && monthlyTrend.length > 0) {
+                let trendHtml = '<div style="display: grid; gap: 8px;">';
+                monthlyTrend.forEach(item => {
+                    const month = item.month.split('-')[1] + '/' + item.month.split('-')[0].slice(2);
+                    trendHtml += `
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>${month}:</span>
+                            <div style="display: flex; gap: 15px;">
+                                <span>${item.count} total</span>
+                                <span style="color: #2aa44f;">${item.completed} completed</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                trendHtml += '</div>';
+                document.getElementById('monthly-trend').innerHTML = trendHtml;
+            }
+            
+            // Load mechanic performance
+            const mechanicPerf = await this.apiRequest('/stats/mechanic-performance');
+            if (mechanicPerf && mechanicPerf.length > 0) {
+                let perfHtml = '<div style="display: grid; gap: 10px;">';
+                mechanicPerf.forEach(mechanic => {
+                    const completionRate = mechanic.total_jobs > 0 ? Math.round((mechanic.completed_jobs / mechanic.total_jobs) * 100) : 0;
+                    perfHtml += `
+                        <div style="border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <strong>${mechanic.mechanic_name}</strong>
+                                <span>${mechanic.total_jobs} jobs</span>
+                            </div>
+                            <div style="display: flex; gap: 10px; font-size: 12px;">
+                                <span style="color: #2aa44f;">${mechanic.completed_jobs} completed</span>
+                                <span style="color: #2c6cc4;">${mechanic.in_progress_jobs} in progress</span>
+                                <span>Rate: ${completionRate}%</span>
+                                <span>Avg: ${mechanic.avg_hours_per_job ? mechanic.avg_hours_per_job.toFixed(1) : '0'} hrs</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                perfHtml += '</div>';
+                document.getElementById('mechanic-performance').innerHTML = perfHtml;
+            }
+            
+            // Load vehicle fleet stats
+            const vehicleStats = await this.apiRequest('/stats/vehicle-types');
+            if (vehicleStats && vehicleStats.length > 0) {
+                let fleetHtml = '<div style="display: grid; gap: 10px;">';
+                vehicleStats.forEach(vehicle => {
+                    const servicePercent = vehicle.count > 0 ? Math.round((vehicle.under_service / vehicle.count) * 100) : 0;
+                    fleetHtml += `
+                        <div style="border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                <strong>${vehicle.make}</strong>
+                                <span>${vehicle.count} vehicles</span>
+                            </div>
+                            <div style="display: flex; gap: 10px; font-size: 12px;">
+                                <span style="color: ${vehicle.under_service > 0 ? '#ff9500' : '#2aa44f'};">${vehicle.under_service} in service</span>
+                                <span>Avg mileage: ${vehicle.avg_mileage ? Math.round(vehicle.avg_mileage).toLocaleString() : '0'} km</span>
+                                <span>Service rate: ${servicePercent}%</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                fleetHtml += '</div>';
+                document.getElementById('vehicle-fleet').innerHTML = fleetHtml;
+            }
+            
+            // Load agency stats
             const agencyStats = await this.apiRequest('/requests/agency-stats');
             if (agencyStats && agencyStats.length > 0) {
                 let agencyHtml = '<div style="display: grid; gap: 10px;">';
@@ -397,6 +554,7 @@ class UNGarageApp {
                 agencyHtml += '</div>';
                 document.getElementById('agency-stats').innerHTML = agencyHtml;
             }
+            
             // Load recent requests
             const requests = await this.apiRequest('/requests');
             if (requests && requests.length > 0) {
@@ -527,7 +685,7 @@ class UNGarageApp {
                     <tr>
                         <td>#${request.id}</td>
                         <td>${request.requestor_name}</td>
-                        <td>${request.agency || 'UN House Liberia'}</td> 
+                        <td>${request.agency || 'UN House Liberia'}</td>
                         <td>${request.number_plate} (${request.make})</td>
                         <td>${request.service_type}</td>
                         <td><span class="badge ${request.priority.replace('_', '-')}">${request.priority.replace('_', ' ')}</span></td>
@@ -1324,6 +1482,289 @@ class UNGarageApp {
     refreshUsers() { this.loadUsers(); }
     refreshMyRequests() { this.loadMyRequests(); }
     refreshMyJobs() { this.loadMyJobs(); }
+    
+    // Admin Functions
+    async showCreateUserModal() {
+        try {
+            const response = await fetch('templates/create-user-modal.html');
+            if (!response.ok) throw new Error('Template not found');
+            const content = await response.text();
+            this.showModal('Create New User', content);
+            
+            // Setup form submission
+            document.getElementById('create-user-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.createUser();
+            });
+            
+            // Agency other field toggle
+            document.getElementById('new-user-agency').addEventListener('change', function() {
+                const otherField = document.getElementById('new-user-agency-other');
+                otherField.style.display = this.value === 'Other' ? 'block' : 'none';
+                if (this.value !== 'Other') otherField.required = false;
+            });
+        } catch (error) {
+            console.error('Error loading template:', error);
+            this.showModal('Create New User', '<p>Error loading form. Please refresh the page.</p>');
+        }
+    }
+    
+    async showCreateVehicleModal() {
+        try {
+            const response = await fetch('templates/create-vehicle-modal.html');
+            if (!response.ok) throw new Error('Template not found');
+            const content = await response.text();
+            this.showModal('Add New Vehicle', content);
+            
+            document.getElementById('create-vehicle-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.createVehicle();
+            });
+            
+            // Vehicle make other field
+            document.getElementById('new-vehicle-make').addEventListener('change', function() {
+                const modelField = document.getElementById('new-vehicle-model');
+                if (this.value === 'Other') {
+                    modelField.placeholder = 'Enter vehicle make and model';
+                } else {
+                    modelField.placeholder = 'Land Cruiser, Hilux, etc.';
+                }
+            });
+        } catch (error) {
+            console.error('Error loading template:', error);
+            this.showModal('Add New Vehicle', '<p>Error loading form. Please refresh the page.</p>');
+        }
+    }
+    
+    async showCreateWorkOrderModal() {
+        try {
+            const response = await fetch('templates/create-workorder-modal.html');
+            if (!response.ok) throw new Error('Template not found');
+            const content = await response.text();
+            this.showModal('Create Work Order', content);
+            
+            // Load approved requests and mechanics
+            await this.loadWorkOrderFormData();
+            
+            document.getElementById('create-workorder-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.createWorkOrder();
+            });
+        } catch (error) {
+            console.error('Error loading template:', error);
+            this.showModal('Create Work Order', '<p>Error loading form. Please refresh the page.</p>');
+        }
+    }
+    
+    async loadWorkOrderFormData() {
+        try {
+            // Load approved requests
+            const requests = await this.apiRequest('/requests');
+            const approvedRequests = requests?.filter(r => r.status === 'approved') || [];
+            
+            const requestSelect = document.getElementById('workorder-request');
+            requestSelect.innerHTML = '<option value="">Select Approved Request</option>';
+            approvedRequests.forEach(request => {
+                const option = document.createElement('option');
+                option.value = request.id;
+                option.textContent = `#${request.id} - ${request.number_plate} - ${request.service_type} (${request.requestor_name})`;
+                requestSelect.appendChild(option);
+            });
+            
+            // Load mechanics
+            const users = await this.apiRequest('/users');
+            const mechanics = users?.filter(u => u.role === 'mechanic') || [];
+            
+            const mechanicSelect = document.getElementById('workorder-mechanic');
+            mechanicSelect.innerHTML = '<option value="">Select Mechanic</option>';
+            mechanics.forEach(mechanic => {
+                const option = document.createElement('option');
+                option.value = mechanic.id;
+                option.textContent = `${mechanic.name} (${mechanic.agency})`;
+                mechanicSelect.appendChild(option);
+            });
+            
+        } catch (error) {
+            console.error('Error loading work order form data:', error);
+        }
+    }
+    
+    async createUser() {
+        const name = document.getElementById('new-user-name').value;
+        const email = document.getElementById('new-user-email').value;
+        const password = document.getElementById('new-user-password').value;
+        const role = document.getElementById('new-user-role').value;
+        let agency = document.getElementById('new-user-agency').value;
+        
+        if (agency === 'Other') {
+            agency = document.getElementById('new-user-agency-other').value || 'UN House Liberia';
+        }
+        
+        if (!name || !email || !password || !role) {
+            alert('Please fill all required fields');
+            return;
+        }
+        
+        if (password.length < 6) {
+            alert('Password must be at least 6 characters');
+            return;
+        }
+        
+        const result = await this.apiRequest('/users', {
+            method: 'POST',
+            body: JSON.stringify({ name, email, password, role, agency })
+        });
+        
+        if (result) {
+            alert('User created successfully!');
+            this.hideModal();
+            this.loadUsers(); // Refresh users table
+        }
+    }
+    
+    async createVehicle() {
+        const number_plate = document.getElementById('new-vehicle-plate').value.toUpperCase();
+        let make = document.getElementById('new-vehicle-make').value;
+        const model = document.getElementById('new-vehicle-model').value;
+        const year = document.getElementById('new-vehicle-year').value;
+        const current_mileage = document.getElementById('new-vehicle-mileage').value || 0;
+        const status = document.getElementById('new-vehicle-status').value;
+        
+        if (make === 'Other') {
+            make = document.getElementById('new-vehicle-model').value.split(' ')[0] || 'Unknown';
+        }
+        
+        if (!number_plate || !make || !model) {
+            alert('Please fill all required fields');
+            return;
+        }
+        
+        const result = await this.apiRequest('/vehicles', {
+            method: 'POST',
+            body: JSON.stringify({
+                number_plate,
+                make,
+                model,
+                year: year || null,
+                current_mileage: parseInt(current_mileage) || 0,
+                status
+            })
+        });
+        
+        if (result) {
+            alert('Vehicle added successfully!');
+            this.hideModal();
+            this.loadVehicles(); // Refresh vehicles table
+        }
+    }
+    
+    async createWorkOrder() {
+        const service_request_id = document.getElementById('workorder-request').value;
+        const assigned_mechanic_id = document.getElementById('workorder-mechanic').value;
+        const instructions = document.getElementById('workorder-instructions').value;
+        
+        if (!service_request_id || !assigned_mechanic_id) {
+            alert('Please select both a service request and a mechanic');
+            return;
+        }
+        
+        const result = await this.apiRequest('/work-orders', {
+            method: 'POST',
+            body: JSON.stringify({
+                service_request_id,
+                assigned_mechanic_id,
+                instructions: instructions || ''
+            })
+        });
+        
+        if (result) {
+            alert('Work order created successfully!');
+            this.hideModal();
+            this.loadWorkOrders(); // Refresh work orders table
+        }
+    }
+    
+    async deleteUser(userId) {
+        if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+            const result = await this.apiRequest(`/users/${userId}`, {
+                method: 'DELETE'
+            });
+        
+            if (result) {
+                alert('User deleted successfully!');
+                this.loadUsers(); // Refresh users table
+            }
+        }
+    }
+    
+    async showVehicleDetails(vehicleId) {
+        const vehicle = await this.apiRequest(`/vehicles/${vehicleId}`);
+        
+        if (vehicle) {
+            const content = `
+                <div style="display: grid; gap: 15px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <h4 style="margin-bottom: 10px; color: #333;">Vehicle Information</h4>
+                            <p><strong>Plate Number:</strong> ${vehicle.number_plate}</p>
+                            <p><strong>Make:</strong> ${vehicle.make}</p>
+                            <p><strong>Model:</strong> ${vehicle.model}</p>
+                            <p><strong>Year:</strong> ${vehicle.year || 'Not specified'}</p>
+                        </div>
+                        <div>
+                            <h4 style="margin-bottom: 10px; color: #333;">Status & Mileage</h4>
+                            <p><strong>Current Mileage:</strong> ${vehicle.current_mileage?.toLocaleString() || '0'} km</p>
+                            <p><strong>Status:</strong> <span class="badge ${vehicle.status.replace('_', '-')}">${vehicle.status.replace('_', ' ')}</span></p>
+                            <p><strong>Added:</strong> ${new Date(vehicle.created_at).toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                    
+                    ${this.currentUser.role === 'admin' ? `
+                        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+                            <h4 style="margin-bottom: 10px; color: #333;">Admin Actions</h4>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn-secondary" onclick="app.updateVehicleStatus(${vehicleId}, '${vehicle.status === 'active' ? 'under_service' : 'active'}')">
+                                    <i class="fas fa-sync-alt"></i> Set as ${vehicle.status === 'active' ? 'Under Service' : 'Active'}
+                                </button>
+                                <button class="btn-secondary" style="background: #ffeaea; color: #dc3545;" onclick="app.deleteVehicle(${vehicleId})">
+                                    <i class="fas fa-trash"></i> Delete Vehicle
+                                </button>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            this.showModal(`Vehicle: ${vehicle.number_plate}`, content);
+        }
+    }
+    
+    async updateVehicleStatus(vehicleId, newStatus) {
+        const result = await this.apiRequest(`/vehicles/${vehicleId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ status: newStatus })
+        });
+        
+        if (result) {
+            alert(`Vehicle status updated to ${newStatus.replace('_', ' ')}`);
+            this.hideModal();
+            this.loadVehicles();
+        }
+    }
+    
+    async deleteVehicle(vehicleId) {
+        if (confirm('Are you sure you want to delete this vehicle? This action cannot be undone.')) {
+            const result = await this.apiRequest(`/vehicles/${vehicleId}`, {
+                method: 'DELETE'
+            });
+        
+            if (result) {
+                alert('Vehicle deleted successfully!');
+                this.hideModal();
+                this.loadVehicles();
+            }
+        }
+    }
 }
 
 // Initialize the app when page loads
@@ -1331,275 +1772,3 @@ let app;
 document.addEventListener('DOMContentLoaded', () => {
     app = new UNGarageApp();
 });
-// Admin Functions
-UNGarageApp.prototype.showCreateUserModal = async function() {
-    const content = await this.loadTemplate('create-user-modal.html');
-    this.showModal('Create New User', content);
-    
-    // Setup form submission
-    document.getElementById('create-user-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await this.createUser();
-    });
-    
-    // Agency other field toggle
-    document.getElementById('new-user-agency').addEventListener('change', function() {
-        const otherField = document.getElementById('new-user-agency-other');
-        otherField.style.display = this.value === 'Other' ? 'block' : 'none';
-        if (this.value !== 'Other') otherField.required = false;
-    });
-};
-
-UNGarageApp.prototype.showCreateVehicleModal = async function() {
-    const content = await this.loadTemplate('create-vehicle-modal.html');
-    this.showModal('Add New Vehicle', content);
-    
-    document.getElementById('create-vehicle-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await this.createVehicle();
-    });
-    
-    // Vehicle make other field
-    document.getElementById('new-vehicle-make').addEventListener('change', function() {
-        const modelField = document.getElementById('new-vehicle-model');
-        if (this.value === 'Other') {
-            modelField.placeholder = 'Enter vehicle make and model';
-        } else {
-            modelField.placeholder = 'Land Cruiser, Hilux, etc.';
-        }
-    });
-};
-
-UNGarageApp.prototype.showCreateWorkOrderModal = async function() {
-    const content = await this.loadTemplate('create-workorder-modal.html');
-    this.showModal('Create Work Order', content);
-    
-    // Load approved requests and mechanics
-    await this.loadWorkOrderFormData();
-    
-    document.getElementById('create-workorder-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        await this.createWorkOrder();
-    });
-};
-
-UNGarageApp.prototype.loadTemplate = async function(templateName) {
-    try {
-        const response = await fetch(`templates/${templateName}`);
-        if (!response.ok) throw new Error('Template not found');
-        return await response.text();
-    } catch (error) {
-        console.error('Error loading template:', error);
-        return '<p>Error loading form. Please refresh the page.</p>';
-    }
-};
-
-UNGarageApp.prototype.loadWorkOrderFormData = async function() {
-    try {
-        // Load approved requests
-        const requests = await this.apiRequest('/requests');
-        const approvedRequests = requests?.filter(r => r.status === 'approved' && !r.work_order_exists) || [];
-        
-        const requestSelect = document.getElementById('workorder-request');
-        requestSelect.innerHTML = '<option value="">Select Approved Request</option>';
-        approvedRequests.forEach(request => {
-            const option = document.createElement('option');
-            option.value = request.id;
-            option.textContent = `#${request.id} - ${request.number_plate} - ${request.service_type} (${request.requestor_name})`;
-            requestSelect.appendChild(option);
-        });
-        
-        // Load mechanics
-        const users = await this.apiRequest('/users');
-        const mechanics = users?.filter(u => u.role === 'mechanic') || [];
-        
-        const mechanicSelect = document.getElementById('workorder-mechanic');
-        mechanicSelect.innerHTML = '<option value="">Select Mechanic</option>';
-        mechanics.forEach(mechanic => {
-            const option = document.createElement('option');
-            option.value = mechanic.id;
-            option.textContent = `${mechanic.name} (${mechanic.agency})`;
-            mechanicSelect.appendChild(option);
-        });
-        
-    } catch (error) {
-        console.error('Error loading work order form data:', error);
-    }
-};
-
-UNGarageApp.prototype.createUser = async function() {
-    const name = document.getElementById('new-user-name').value;
-    const email = document.getElementById('new-user-email').value;
-    const password = document.getElementById('new-user-password').value;
-    const role = document.getElementById('new-user-role').value;
-    let agency = document.getElementById('new-user-agency').value;
-    
-    if (agency === 'Other') {
-        agency = document.getElementById('new-user-agency-other').value || 'UN House Liberia';
-    }
-    
-    if (!name || !email || !password || !role) {
-        alert('Please fill all required fields');
-        return;
-    }
-    
-    if (password.length < 6) {
-        alert('Password must be at least 6 characters');
-        return;
-    }
-    
-    const result = await this.apiRequest('/users', {
-        method: 'POST',
-        body: JSON.stringify({ name, email, password, role, agency })
-    });
-    
-    if (result) {
-        alert('User created successfully!');
-        this.hideModal();
-        this.loadUsers(); // Refresh users table
-    }
-};
-
-UNGarageApp.prototype.createVehicle = async function() {
-    const number_plate = document.getElementById('new-vehicle-plate').value.toUpperCase();
-    let make = document.getElementById('new-vehicle-make').value;
-    const model = document.getElementById('new-vehicle-model').value;
-    const year = document.getElementById('new-vehicle-year').value;
-    const current_mileage = document.getElementById('new-vehicle-mileage').value || 0;
-    const status = document.getElementById('new-vehicle-status').value;
-    
-    if (make === 'Other') {
-        make = document.getElementById('new-vehicle-model').value.split(' ')[0] || 'Unknown';
-    }
-    
-    if (!number_plate || !make || !model) {
-        alert('Please fill all required fields');
-        return;
-    }
-    
-    const result = await this.apiRequest('/vehicles', {
-        method: 'POST',
-        body: JSON.stringify({
-            number_plate,
-            make,
-            model,
-            year: year || null,
-            current_mileage: parseInt(current_mileage) || 0,
-            status
-        })
-    });
-    
-    if (result) {
-        alert('Vehicle added successfully!');
-        this.hideModal();
-        this.loadVehicles(); // Refresh vehicles table
-    }
-};
-
-UNGarageApp.prototype.createWorkOrder = async function() {
-    const service_request_id = document.getElementById('workorder-request').value;
-    const assigned_mechanic_id = document.getElementById('workorder-mechanic').value;
-    const instructions = document.getElementById('workorder-instructions').value;
-    
-    if (!service_request_id || !assigned_mechanic_id) {
-        alert('Please select both a service request and a mechanic');
-        return;
-    }
-    
-    const result = await this.apiRequest('/work-orders', {
-        method: 'POST',
-        body: JSON.stringify({
-            service_request_id,
-            assigned_mechanic_id,
-            instructions: instructions || ''
-        })
-    });
-    
-    if (result) {
-        alert('Work order created successfully!');
-        this.hideModal();
-        this.loadWorkOrders(); // Refresh work orders table
-    }
-};
-
-UNGarageApp.prototype.deleteUser = async function(userId) {
-    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-        const result = await this.apiRequest(`/users/${userId}`, {
-            method: 'DELETE'
-        });
-        
-        if (result) {
-            alert('User deleted successfully!');
-            this.loadUsers(); // Refresh users table
-        }
-    }
-};
-
-UNGarageApp.prototype.showVehicleDetails = async function(vehicleId) {
-    const vehicle = await this.apiRequest(`/vehicles/${vehicleId}`);
-    
-    if (vehicle) {
-        const content = `
-            <div style="display: grid; gap: 15px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div>
-                        <h4 style="margin-bottom: 10px; color: #333;">Vehicle Information</h4>
-                        <p><strong>Plate Number:</strong> ${vehicle.number_plate}</p>
-                        <p><strong>Make:</strong> ${vehicle.make}</p>
-                        <p><strong>Model:</strong> ${vehicle.model}</p>
-                        <p><strong>Year:</strong> ${vehicle.year || 'Not specified'}</p>
-                    </div>
-                    <div>
-                        <h4 style="margin-bottom: 10px; color: #333;">Status & Mileage</h4>
-                        <p><strong>Current Mileage:</strong> ${vehicle.current_mileage?.toLocaleString() || '0'} km</p>
-                        <p><strong>Status:</strong> <span class="badge ${vehicle.status.replace('_', '-')}">${vehicle.status.replace('_', ' ')}</span></p>
-                        <p><strong>Added:</strong> ${new Date(vehicle.created_at).toLocaleDateString()}</p>
-                    </div>
-                </div>
-                
-                ${this.currentUser.role === 'admin' ? `
-                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
-                        <h4 style="margin-bottom: 10px; color: #333;">Admin Actions</h4>
-                        <div style="display: flex; gap: 10px;">
-                            <button class="btn-secondary" onclick="app.updateVehicleStatus(${vehicleId}, '${vehicle.status === 'active' ? 'under_service' : 'active'}')">
-                                <i class="fas fa-sync-alt"></i> Set as ${vehicle.status === 'active' ? 'Under Service' : 'Active'}
-                            </button>
-                            <button class="btn-secondary" style="background: #ffeaea; color: #dc3545;" onclick="app.deleteVehicle(${vehicleId})">
-                                <i class="fas fa-trash"></i> Delete Vehicle
-                            </button>
-                        </div>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-        
-        this.showModal(`Vehicle: ${vehicle.number_plate}`, content);
-    }
-};
-
-UNGarageApp.prototype.updateVehicleStatus = async function(vehicleId, newStatus) {
-    const result = await this.apiRequest(`/vehicles/${vehicleId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ status: newStatus })
-    });
-    
-    if (result) {
-        alert(`Vehicle status updated to ${newStatus.replace('_', ' ')}`);
-        this.hideModal();
-        this.loadVehicles();
-    }
-};
-
-UNGarageApp.prototype.deleteVehicle = async function(vehicleId) {
-    if (confirm('Are you sure you want to delete this vehicle? This action cannot be undone.')) {
-        const result = await this.apiRequest(`/vehicles/${vehicleId}`, {
-            method: 'DELETE'
-        });
-        
-        if (result) {
-            alert('Vehicle deleted successfully!');
-            this.hideModal();
-            this.loadVehicles();
-        }
-    }
-};

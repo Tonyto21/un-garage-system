@@ -1331,3 +1331,275 @@ let app;
 document.addEventListener('DOMContentLoaded', () => {
     app = new UNGarageApp();
 });
+// Admin Functions
+UNGarageApp.prototype.showCreateUserModal = async function() {
+    const content = await this.loadTemplate('create-user-modal.html');
+    this.showModal('Create New User', content);
+    
+    // Setup form submission
+    document.getElementById('create-user-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.createUser();
+    });
+    
+    // Agency other field toggle
+    document.getElementById('new-user-agency').addEventListener('change', function() {
+        const otherField = document.getElementById('new-user-agency-other');
+        otherField.style.display = this.value === 'Other' ? 'block' : 'none';
+        if (this.value !== 'Other') otherField.required = false;
+    });
+};
+
+UNGarageApp.prototype.showCreateVehicleModal = async function() {
+    const content = await this.loadTemplate('create-vehicle-modal.html');
+    this.showModal('Add New Vehicle', content);
+    
+    document.getElementById('create-vehicle-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.createVehicle();
+    });
+    
+    // Vehicle make other field
+    document.getElementById('new-vehicle-make').addEventListener('change', function() {
+        const modelField = document.getElementById('new-vehicle-model');
+        if (this.value === 'Other') {
+            modelField.placeholder = 'Enter vehicle make and model';
+        } else {
+            modelField.placeholder = 'Land Cruiser, Hilux, etc.';
+        }
+    });
+};
+
+UNGarageApp.prototype.showCreateWorkOrderModal = async function() {
+    const content = await this.loadTemplate('create-workorder-modal.html');
+    this.showModal('Create Work Order', content);
+    
+    // Load approved requests and mechanics
+    await this.loadWorkOrderFormData();
+    
+    document.getElementById('create-workorder-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.createWorkOrder();
+    });
+};
+
+UNGarageApp.prototype.loadTemplate = async function(templateName) {
+    try {
+        const response = await fetch(`templates/${templateName}`);
+        if (!response.ok) throw new Error('Template not found');
+        return await response.text();
+    } catch (error) {
+        console.error('Error loading template:', error);
+        return '<p>Error loading form. Please refresh the page.</p>';
+    }
+};
+
+UNGarageApp.prototype.loadWorkOrderFormData = async function() {
+    try {
+        // Load approved requests
+        const requests = await this.apiRequest('/requests');
+        const approvedRequests = requests?.filter(r => r.status === 'approved' && !r.work_order_exists) || [];
+        
+        const requestSelect = document.getElementById('workorder-request');
+        requestSelect.innerHTML = '<option value="">Select Approved Request</option>';
+        approvedRequests.forEach(request => {
+            const option = document.createElement('option');
+            option.value = request.id;
+            option.textContent = `#${request.id} - ${request.number_plate} - ${request.service_type} (${request.requestor_name})`;
+            requestSelect.appendChild(option);
+        });
+        
+        // Load mechanics
+        const users = await this.apiRequest('/users');
+        const mechanics = users?.filter(u => u.role === 'mechanic') || [];
+        
+        const mechanicSelect = document.getElementById('workorder-mechanic');
+        mechanicSelect.innerHTML = '<option value="">Select Mechanic</option>';
+        mechanics.forEach(mechanic => {
+            const option = document.createElement('option');
+            option.value = mechanic.id;
+            option.textContent = `${mechanic.name} (${mechanic.agency})`;
+            mechanicSelect.appendChild(option);
+        });
+        
+    } catch (error) {
+        console.error('Error loading work order form data:', error);
+    }
+};
+
+UNGarageApp.prototype.createUser = async function() {
+    const name = document.getElementById('new-user-name').value;
+    const email = document.getElementById('new-user-email').value;
+    const password = document.getElementById('new-user-password').value;
+    const role = document.getElementById('new-user-role').value;
+    let agency = document.getElementById('new-user-agency').value;
+    
+    if (agency === 'Other') {
+        agency = document.getElementById('new-user-agency-other').value || 'UN House Liberia';
+    }
+    
+    if (!name || !email || !password || !role) {
+        alert('Please fill all required fields');
+        return;
+    }
+    
+    if (password.length < 6) {
+        alert('Password must be at least 6 characters');
+        return;
+    }
+    
+    const result = await this.apiRequest('/users', {
+        method: 'POST',
+        body: JSON.stringify({ name, email, password, role, agency })
+    });
+    
+    if (result) {
+        alert('User created successfully!');
+        this.hideModal();
+        this.loadUsers(); // Refresh users table
+    }
+};
+
+UNGarageApp.prototype.createVehicle = async function() {
+    const number_plate = document.getElementById('new-vehicle-plate').value.toUpperCase();
+    let make = document.getElementById('new-vehicle-make').value;
+    const model = document.getElementById('new-vehicle-model').value;
+    const year = document.getElementById('new-vehicle-year').value;
+    const current_mileage = document.getElementById('new-vehicle-mileage').value || 0;
+    const status = document.getElementById('new-vehicle-status').value;
+    
+    if (make === 'Other') {
+        make = document.getElementById('new-vehicle-model').value.split(' ')[0] || 'Unknown';
+    }
+    
+    if (!number_plate || !make || !model) {
+        alert('Please fill all required fields');
+        return;
+    }
+    
+    const result = await this.apiRequest('/vehicles', {
+        method: 'POST',
+        body: JSON.stringify({
+            number_plate,
+            make,
+            model,
+            year: year || null,
+            current_mileage: parseInt(current_mileage) || 0,
+            status
+        })
+    });
+    
+    if (result) {
+        alert('Vehicle added successfully!');
+        this.hideModal();
+        this.loadVehicles(); // Refresh vehicles table
+    }
+};
+
+UNGarageApp.prototype.createWorkOrder = async function() {
+    const service_request_id = document.getElementById('workorder-request').value;
+    const assigned_mechanic_id = document.getElementById('workorder-mechanic').value;
+    const instructions = document.getElementById('workorder-instructions').value;
+    
+    if (!service_request_id || !assigned_mechanic_id) {
+        alert('Please select both a service request and a mechanic');
+        return;
+    }
+    
+    const result = await this.apiRequest('/work-orders', {
+        method: 'POST',
+        body: JSON.stringify({
+            service_request_id,
+            assigned_mechanic_id,
+            instructions: instructions || ''
+        })
+    });
+    
+    if (result) {
+        alert('Work order created successfully!');
+        this.hideModal();
+        this.loadWorkOrders(); // Refresh work orders table
+    }
+};
+
+UNGarageApp.prototype.deleteUser = async function(userId) {
+    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+        const result = await this.apiRequest(`/users/${userId}`, {
+            method: 'DELETE'
+        });
+        
+        if (result) {
+            alert('User deleted successfully!');
+            this.loadUsers(); // Refresh users table
+        }
+    }
+};
+
+UNGarageApp.prototype.showVehicleDetails = async function(vehicleId) {
+    const vehicle = await this.apiRequest(`/vehicles/${vehicleId}`);
+    
+    if (vehicle) {
+        const content = `
+            <div style="display: grid; gap: 15px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <h4 style="margin-bottom: 10px; color: #333;">Vehicle Information</h4>
+                        <p><strong>Plate Number:</strong> ${vehicle.number_plate}</p>
+                        <p><strong>Make:</strong> ${vehicle.make}</p>
+                        <p><strong>Model:</strong> ${vehicle.model}</p>
+                        <p><strong>Year:</strong> ${vehicle.year || 'Not specified'}</p>
+                    </div>
+                    <div>
+                        <h4 style="margin-bottom: 10px; color: #333;">Status & Mileage</h4>
+                        <p><strong>Current Mileage:</strong> ${vehicle.current_mileage?.toLocaleString() || '0'} km</p>
+                        <p><strong>Status:</strong> <span class="badge ${vehicle.status.replace('_', '-')}">${vehicle.status.replace('_', ' ')}</span></p>
+                        <p><strong>Added:</strong> ${new Date(vehicle.created_at).toLocaleDateString()}</p>
+                    </div>
+                </div>
+                
+                ${this.currentUser.role === 'admin' ? `
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+                        <h4 style="margin-bottom: 10px; color: #333;">Admin Actions</h4>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn-secondary" onclick="app.updateVehicleStatus(${vehicleId}, '${vehicle.status === 'active' ? 'under_service' : 'active'}')">
+                                <i class="fas fa-sync-alt"></i> Set as ${vehicle.status === 'active' ? 'Under Service' : 'Active'}
+                            </button>
+                            <button class="btn-secondary" style="background: #ffeaea; color: #dc3545;" onclick="app.deleteVehicle(${vehicleId})">
+                                <i class="fas fa-trash"></i> Delete Vehicle
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+        
+        this.showModal(`Vehicle: ${vehicle.number_plate}`, content);
+    }
+};
+
+UNGarageApp.prototype.updateVehicleStatus = async function(vehicleId, newStatus) {
+    const result = await this.apiRequest(`/vehicles/${vehicleId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus })
+    });
+    
+    if (result) {
+        alert(`Vehicle status updated to ${newStatus.replace('_', ' ')}`);
+        this.hideModal();
+        this.loadVehicles();
+    }
+};
+
+UNGarageApp.prototype.deleteVehicle = async function(vehicleId) {
+    if (confirm('Are you sure you want to delete this vehicle? This action cannot be undone.')) {
+        const result = await this.apiRequest(`/vehicles/${vehicleId}`, {
+            method: 'DELETE'
+        });
+        
+        if (result) {
+            alert('Vehicle deleted successfully!');
+            this.hideModal();
+            this.loadVehicles();
+        }
+    }
+};

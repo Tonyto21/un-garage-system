@@ -31,6 +31,10 @@ app.use('/vehicles', vehicleRoutes);
 app.use('/requests', requestRoutes);
 app.use('/work-orders', workOrderRoutes);
 
+// Stats routes
+const statsRoutes = require('./routes/stats');
+app.use('/stats', statsRoutes);
+
 // Welcome route
 app.get('/', (req, res) => {
     res.json({
