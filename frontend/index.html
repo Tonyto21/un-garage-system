@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UN Garage Management System</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Login Screen (shown by default) -->
+        <div id="login-screen" class="screen active">
+            <div class="login-container">
+                <div class="login-header">
+                    <div class="un-logo">
+                        <div class="un-globe">
+                            <i class="fas fa-globe-americas"></i>
+                        </div>
+                        <h1>UN Garage</h1>
+                    </div>
+                    <h2>Management System</h2>
+                    <p class="login-subtitle">One UN House Liberia - Vehicle Service Portal</p>
+                </div>
+                
+                <div class="login-form">
+                    <div class="form-group">
+                        <label for="email"><i class="fas fa-envelope"></i> Email</label>
+                        <input type="email" id="email" placeholder="your.email@un.org">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password"><i class="fas fa-lock"></i> Password</label>
+                        <input type="password" id="password" placeholder="Enter your password">
+                    </div>
+                    
+                    <button id="login-btn" class="btn-login">
+                        <i class="fas fa-sign-in-alt"></i> Sign In
+                    </button>
+                    
+                    <div class="demo-credentials">
+                        <h4><i class="fas fa-info-circle"></i> Demo Credentials:</h4>
+                        <div class="credentials-grid">
+                            <div class="credential">
+                                <strong>Admin:</strong> shem.admin@un.org / admin123
+                            </div>
+                            <div class="credential">
+                                <strong>Requestor:</strong> james.requestor@un.org / requestor123
+                            </div>
+                            <div class="credential">
+                                <strong>Mechanic:</strong> anthony.mechanic@un.org / mechanic123
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="login-footer">
+                    <p><i class="fas fa-shield-alt"></i> Secure UN System | Version 1.0</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main App Screen (hidden by default) -->
+        <div id="app-screen" class="screen">
+            <div class="app-container">
+                <!-- Sidebar -->
+                <div class="sidebar">
+                    <div class="sidebar-header">
+                        <div class="un-logo-small">
+                            <i class="fas fa-globe-americas"></i>
+                        </div>
+                        <h3>UN Garage</h3>
+                        <p id="user-role-badge" class="role-badge">Admin</p>
+                    </div>
+                    
+                    <div class="sidebar-user">
+                        <div class="user-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="user-info">
+                            <h4 id="user-name">Shem Namayi</h4>
+                            <p id="user-email">shem.admin@un.org</p>
+                        </div>
+                    </div>
+                    
+                    <nav class="sidebar-nav">
+                        <ul>
+                            <li><a href="#" data-page="dashboard"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                            <li class="admin-only"><a href="#" data-page="requests"><i class="fas fa-clipboard-list"></i> Service Requests</a></li>
+                            <li class="admin-only"><a href="#" data-page="work-orders"><i class="fas fa-tools"></i> Work Orders</a></li>
+                            <li class="admin-only"><a href="#" data-page="vehicles"><i class="fas fa-car"></i> Vehicles</a></li>
+                            <li class="admin-only"><a href="#" data-page="users"><i class="fas fa-users"></i> Users</a></li>
+                            <li class="requestor-only"><a href="#" data-page="my-requests"><i class="fas fa-history"></i> My Requests</a></li>
+                            <li class="requestor-only"><a href="#" data-page="new-request"><i class="fas fa-plus-circle"></i> New Request</a></li>
+                            <li class="mechanic-only"><a href="#" data-page="my-jobs"><i class="fas fa-wrench"></i> My Jobs</a></li>
+                        </ul>
+                    </nav>
+                    
+                    <div class="sidebar-footer">
+                        <button id="logout-btn" class="btn-logout">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Main Content -->
+                <div class="main-content">
+                    <div class="content-header">
+                        <h1 id="page-title">Dashboard</h1>
+                        <div class="header-actions">
+                            <div class="notification-bell">
+                                <i class="fas fa-bell"></i>
+                                <span class="notification-count">3</span>
+                            </div>
+                            <div class="current-time" id="current-time">
+                                <i class="fas fa-clock"></i> Loading...
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="content-body">
+                        <!-- Pages will be loaded here dynamically -->
+                        <div id="dashboard-page" class="page active">
+                            <!-- Dashboard content will be loaded via JavaScript -->
+                        </div>
+                        
+                        <div id="requests-page" class="page">
+                            <!-- Service Requests content -->
+                        </div>
+                        
+                        <div id="work-orders-page" class="page">
+                            <!-- Work Orders content -->
+                        </div>
+                        
+                        <div id="vehicles-page" class="page">
+                            <!-- Vehicles content -->
+                        </div>
+                        
+                        <div id="users-page" class="page">
+                            <!-- Users content -->
+                        </div>
+                        
+                        <div id="my-requests-page" class="page">
+                            <!-- My Requests content -->
+                        </div>
+                        
+                        <div id="new-request-page" class="page">
+                            <!-- New Request form -->
+                        </div>
+                        
+                        <div id="my-jobs-page" class="page">
+                            <!-- My Jobs content -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal for displaying details -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Details</h3>
+                <button id="modal-close" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                Loading...
+            </div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>

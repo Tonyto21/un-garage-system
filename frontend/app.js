@@ -1,0 +1,1289 @@
+// UN Garage Management System - Frontend Application
+class UNGarageApp {
+    constructor() {
+        this.currentUser = null;
+        this.token = null;
+        this.currentPage = 'dashboard';
+        this.apiBase = 'http://localhost:3000';
+        
+        this.initializeApp();
+    }
+    
+    initializeApp() {
+        this.setupEventListeners();
+        this.updateTime();
+        setInterval(() => this.updateTime(), 60000);
+        
+        // Check for saved login
+        const savedToken = localStorage.getItem('token');
+        const savedUser = localStorage.getItem('user');
+        
+        if (savedToken && savedUser) {
+            this.token = savedToken;
+            this.currentUser = JSON.parse(savedUser);
+            this.showApp();
+        }
+    }
+    
+    setupEventListeners() {
+        // Login
+        document.getElementById('login-btn').addEventListener('click', () => this.login());
+        document.getElementById('password').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.login();
+        });
+        
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', () => this.logout());
+        
+        // Navigation
+        document.querySelectorAll('.sidebar-nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = e.target.closest('a').dataset.page;
+                this.showPage(page);
+            });
+        });
+        
+        // Modal close
+        document.getElementById('modal-close').addEventListener('click', () => this.hideModal());
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('modal')) {
+                this.hideModal();
+            }
+        });
+    }
+    
+    updateTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+        const dateString = now.toLocaleDateString('en-US', {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+        document.getElementById('current-time').innerHTML = 
+            `<i class="fas fa-clock"></i> ${timeString} • ${dateString}`;
+    }
+    
+    async login() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        
+        if (!email || !password) {
+            alert('Please enter both email and password');
+            return;
+        }
+        
+        const loginBtn = document.getElementById('login-btn');
+        const originalText = loginBtn.innerHTML;
+        loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
+        loginBtn.disabled = true;
+        
+        try {
+            const response = await fetch(`${this.apiBase}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.token = data.token;
+                this.currentUser = data.user;
+                
+                // Save to localStorage
+                localStorage.setItem('token', this.token);
+                localStorage.setItem('user', JSON.stringify(this.currentUser));
+                
+                this.showApp();
+            } else {
+                alert(data.error || 'Login failed');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            alert('Network error. Make sure backend is running on http://localhost:3000');
+        } finally {
+            loginBtn.innerHTML = originalText;
+            loginBtn.disabled = false;
+        }
+    }
+    
+    logout() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        this.token = null;
+        this.currentUser = null;
+        this.showLogin();
+    }
+    
+    showLogin() {
+        document.getElementById('login-screen').classList.add('active');
+        document.getElementById('app-screen').classList.remove('active');
+        document.getElementById('email').value = '';
+        document.getElementById('password').value = '';
+    }
+    
+    showApp() {
+        document.getElementById('login-screen').classList.remove('active');
+        document.getElementById('app-screen').classList.add('active');
+        
+        // Update user info in sidebar
+        document.getElementById('user-name').textContent = this.currentUser.name;
+        document.getElementById('user-email').textContent = this.currentUser.email;
+        document.getElementById('user-role-badge').textContent = this.currentUser.role.charAt(0).toUpperCase() + this.currentUser.role.slice(1);
+        
+        // Show/hide navigation based on role
+        document.querySelectorAll('.admin-only').forEach(el => {
+            el.style.display = this.currentUser.role === 'admin' ? 'block' : 'none';
+        });
+        document.querySelectorAll('.requestor-only').forEach(el => {
+            el.style.display = this.currentUser.role === 'requestor' ? 'block' : 'none';
+        });
+        document.querySelectorAll('.mechanic-only').forEach(el => {
+            el.style.display = this.currentUser.role === 'mechanic' ? 'block' : 'none';
+        });
+        
+        // Show appropriate dashboard
+        if (this.currentUser.role === 'admin') {
+            this.showPage('dashboard');
+        } else if (this.currentUser.role === 'requestor') {
+            this.showPage('my-requests');
+        } else if (this.currentUser.role === 'mechanic') {
+            this.showPage('my-jobs');
+        }
+    }
+    
+    async showPage(pageName) {
+        this.currentPage = pageName;
+        
+        // Update active nav
+        document.querySelectorAll('.sidebar-nav a').forEach(link => {
+            link.classList.remove('active');
+            if (link.dataset.page === pageName) {
+                link.classList.add('active');
+            }
+        });
+        
+        // Update page title
+        const pageTitles = {
+            'dashboard': 'Dashboard',
+            'requests': 'Service Requests',
+            'work-orders': 'Work Orders',
+            'vehicles': 'Vehicles',
+            'users': 'Users',
+            'my-requests': 'My Service Requests',
+            'new-request': 'New Service Request',
+            'my-jobs': 'My Assigned Jobs'
+        };
+        document.getElementById('page-title').textContent = pageTitles[pageName] || 'Dashboard';
+        
+        // Hide all pages
+        document.querySelectorAll('.page').forEach(page => {
+            page.classList.remove('active');
+        });
+        
+        // Show selected page
+        const pageElement = document.getElementById(`${pageName}-page`);
+        pageElement.classList.add('active');
+        
+        // Load page content
+        switch(pageName) {
+            case 'dashboard':
+                await this.loadDashboard();
+                break;
+            case 'requests':
+                await this.loadServiceRequests();
+                break;
+            case 'work-orders':
+                await this.loadWorkOrders();
+                break;
+            case 'vehicles':
+                await this.loadVehicles();
+                break;
+            case 'users':
+                await this.loadUsers();
+                break;
+            case 'my-requests':
+                await this.loadMyRequests();
+                break;
+            case 'new-request':
+                await this.loadNewRequestForm();
+                break;
+            case 'my-jobs':
+                await this.loadMyJobs();
+                break;
+        }
+    }
+    
+    async apiRequest(endpoint, options = {}) {
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
+        
+        if (this.token) {
+            headers['Authorization'] = `Bearer ${this.token}`;
+        }
+        
+        try {
+            const response = await fetch(`${this.apiBase}${endpoint}`, {
+                ...options,
+                headers
+            });
+            
+            if (response.status === 401) {
+                this.logout();
+                return null;
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('API request error:', error);
+            return null;
+        }
+    }
+    
+    async loadDashboard() {
+        const page = document.getElementById('dashboard-page');
+        
+        if (this.currentUser.role !== 'admin') {
+            page.innerHTML = '<div class="card"><h3>Access Restricted</h3><p>Admin dashboard is only available to administrators.</p></div>';
+            return;
+        }
+        
+        page.innerHTML = `
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Service Requests</h3>
+                        <div class="card-icon admin">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                    </div>
+                    <div class="card-number" id="total-requests">0</div>
+                    <div class="card-subtitle">Total requests submitted</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Active Work Orders</h3>
+                        <div class="card-icon mechanic">
+                            <i class="fas fa-tools"></i>
+                        </div>
+                    </div>
+                    <div class="card-number" id="active-work-orders">0</div>
+                    <div class="card-subtitle">Currently in progress</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Vehicles in Service</h3>
+                        <div class="card-icon requestor">
+                            <i class="fas fa-car"></i>
+                        </div>
+                    </div>
+                    <div class="card-number" id="vehicles-in-service">0</div>
+                    <div class="card-subtitle">Currently under maintenance</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Mechanics Active</h3>
+                        <div class="card-icon mechanic">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                    <div class="card-number" id="active-mechanics">1</div>
+                    <div class="card-subtitle">Currently assigned</div>
+                </div>
+            </div>
+            
+            <div class="table-container" style="margin-top: 30px;">
+                <div class="table-header">
+                    <h3>Recent Service Requests</h3>
+                    <div class="table-actions">
+                        <button class="btn-primary" onclick="app.showPage('requests')">
+                            <i class="fas fa-eye"></i> View All
+                        </button>
+                    </div>
+                </div>
+                <div id="recent-requests-table">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+            
+            <div class="table-container" style="margin-top: 30px;">
+                <div class="table-header">
+                    <h3>Recent Work Orders</h3>
+                    <div class="table-actions">
+                        <button class="btn-primary" onclick="app.showPage('work-orders')">
+                            <i class="fas fa-eye"></i> View All
+                        </button>
+                    </div>
+                </div>
+                <div id="recent-work-orders-table">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        `;
+        
+        // Load data
+        await this.loadDashboardData();
+    }
+    
+    async loadDashboardData() {
+        try {
+            // Load service requests stats
+            const requestsData = await this.apiRequest('/requests/stats');
+            if (requestsData) {
+                document.getElementById('total-requests').textContent = requestsData.total || 0;
+            }
+            
+            // Load work orders stats
+            const workOrdersData = await this.apiRequest('/work-orders/stats');
+            if (workOrdersData) {
+                const active = (workOrdersData.pending || 0) + (workOrdersData.in_progress || 0);
+                document.getElementById('active-work-orders').textContent = active;
+            }
+            
+            // Load vehicles under service
+            const vehiclesData = await this.apiRequest('/vehicles/under-service');
+            if (vehiclesData) {
+                document.getElementById('vehicles-in-service').textContent = vehiclesData.length || 0;
+            }
+            
+            // Load recent requests
+            const requests = await this.apiRequest('/requests');
+            if (requests && requests.length > 0) {
+                const recentRequests = requests.slice(0, 5);
+                let html = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Vehicle</th>
+                                <th>Type</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                recentRequests.forEach(request => {
+                    const date = new Date(request.created_at).toLocaleDateString();
+                    html += `
+                        <tr onclick="app.showRequestDetails(${request.id})" style="cursor: pointer;">
+                            <td>#${request.id}</td>
+                            <td>${request.number_plate} (${request.make})</td>
+                            <td>${request.service_type}</td>
+                            <td><span class="badge ${request.priority.replace('_', '-')}">${request.priority.replace('_', ' ')}</span></td>
+                            <td><span class="badge ${request.status}">${request.status}</span></td>
+                            <td>${date}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                        </tbody>
+                    </table>
+                `;
+                document.getElementById('recent-requests-table').innerHTML = html;
+            }
+            
+            // Load recent work orders
+            const workOrders = await this.apiRequest('/work-orders');
+            if (workOrders && workOrders.length > 0) {
+                const recentWorkOrders = workOrders.slice(0, 5);
+                let html = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Vehicle</th>
+                                <th>Mechanic</th>
+                                <th>Status</th>
+                                <th>Started</th>
+                                <th>Completed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                recentWorkOrders.forEach(order => {
+                    const started = order.started_at ? new Date(order.started_at).toLocaleDateString() : '-';
+                    const completed = order.completed_at ? new Date(order.completed_at).toLocaleDateString() : '-';
+                    html += `
+                        <tr onclick="app.showWorkOrderDetails(${order.id})" style="cursor: pointer;">
+                            <td>#${order.id}</td>
+                            <td>${order.number_plate}</td>
+                            <td>${order.mechanic_name}</td>
+                            <td><span class="badge ${order.status.replace('_', '-')}">${order.status.replace('_', ' ')}</span></td>
+                            <td>${started}</td>
+                            <td>${completed}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                        </tbody>
+                    </table>
+                `;
+                document.getElementById('recent-work-orders-table').innerHTML = html;
+            }
+            
+        } catch (error) {
+            console.error('Error loading dashboard data:', error);
+        }
+    }
+    
+    async loadServiceRequests() {
+        const page = document.getElementById('requests-page');
+        page.innerHTML = `
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>All Service Requests</h3>
+                    <div class="table-actions">
+                        <button class="btn-secondary" onclick="app.refreshRequests()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="requests-table">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        `;
+        
+        const requests = await this.apiRequest('/requests');
+        if (requests) {
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Requestor</th>
+                            <th>Vehicle</th>
+                            <th>Type</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            requests.forEach(request => {
+                const date = new Date(request.created_at).toLocaleDateString();
+                html += `
+                    <tr>
+                        <td>#${request.id}</td>
+                        <td>${request.requestor_name}</td>
+                        <td>${request.number_plate} (${request.make})</td>
+                        <td>${request.service_type}</td>
+                        <td><span class="badge ${request.priority.replace('_', '-')}">${request.priority.replace('_', ' ')}</span></td>
+                        <td><span class="badge ${request.status}">${request.status}</span></td>
+                        <td>${date}</td>
+                        <td>
+                            <button class="btn-secondary" onclick="app.showRequestDetails(${request.id})" style="margin-right: 5px;">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            ${request.status === 'submitted' ? `
+                                <button class="btn-primary" onclick="app.approveRequest(${request.id})" style="margin-right: 5px;">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button class="btn-secondary" onclick="app.rejectRequest(${request.id})" style="background: #ffeaea; color: #dc3545;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('requests-table').innerHTML = html;
+        }
+    }
+    
+    async loadWorkOrders() {
+        const page = document.getElementById('work-orders-page');
+        page.innerHTML = `
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>All Work Orders</h3>
+                    <div class="table-actions">
+                        <button class="btn-primary" onclick="app.showCreateWorkOrderModal()">
+                            <i class="fas fa-plus"></i> New Work Order
+                        </button>
+                        <button class="btn-secondary" onclick="app.refreshWorkOrders()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="work-orders-table">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        `;
+        
+        const workOrders = await this.apiRequest('/work-orders');
+        if (workOrders) {
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Vehicle</th>
+                            <th>Description</th>
+                            <th>Mechanic</th>
+                            <th>Status</th>
+                            <th>Started</th>
+                            <th>Completed</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            workOrders.forEach(order => {
+                const started = order.started_at ? new Date(order.started_at).toLocaleDateString() : '-';
+                const completed = order.completed_at ? new Date(order.completed_at).toLocaleDateString() : '-';
+                html += `
+                    <tr>
+                        <td>#${order.id}</td>
+                        <td>${order.number_plate}</td>
+                        <td>${order.request_description.substring(0, 50)}${order.request_description.length > 50 ? '...' : ''}</td>
+                        <td>${order.mechanic_name}</td>
+                        <td><span class="badge ${order.status.replace('_', '-')}">${order.status.replace('_', ' ')}</span></td>
+                        <td>${started}</td>
+                        <td>${completed}</td>
+                        <td>
+                            <button class="btn-secondary" onclick="app.showWorkOrderDetails(${order.id})">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('work-orders-table').innerHTML = html;
+        }
+    }
+    
+    async loadVehicles() {
+        const page = document.getElementById('vehicles-page');
+        page.innerHTML = `
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>All Vehicles</h3>
+                    <div class="table-actions">
+                        <button class="btn-primary" onclick="app.showCreateVehicleModal()">
+                            <i class="fas fa-plus"></i> Add Vehicle
+                        </button>
+                        <button class="btn-secondary" onclick="app.refreshVehicles()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="vehicles-table">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        `;
+        
+        const vehicles = await this.apiRequest('/vehicles');
+        if (vehicles) {
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Plate Number</th>
+                            <th>Make</th>
+                            <th>Model</th>
+                            <th>Year</th>
+                            <th>Mileage</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            vehicles.forEach(vehicle => {
+                html += `
+                    <tr>
+                        <td><strong>${vehicle.number_plate}</strong></td>
+                        <td>${vehicle.make}</td>
+                        <td>${vehicle.model}</td>
+                        <td>${vehicle.year || '-'}</td>
+                        <td>${vehicle.current_mileage?.toLocaleString() || '0'} km</td>
+                        <td><span class="badge ${vehicle.status.replace('_', '-')}">${vehicle.status.replace('_', ' ')}</span></td>
+                        <td>
+                            <button class="btn-secondary" onclick="app.showVehicleDetails(${vehicle.id})">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('vehicles-table').innerHTML = html;
+        }
+    }
+    
+    async loadUsers() {
+        const page = document.getElementById('users-page');
+        page.innerHTML = `
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>All Users</h3>
+                    <div class="table-actions">
+                        <button class="btn-primary" onclick="app.showCreateUserModal()">
+                            <i class="fas fa-plus"></i> Add User
+                        </button>
+                        <button class="btn-secondary" onclick="app.refreshUsers()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="users-table">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        `;
+        
+        const users = await this.apiRequest('/users');
+        if (users) {
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Joined</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            users.forEach(user => {
+                const date = new Date(user.created_at).toLocaleDateString();
+                html += `
+                    <tr>
+                        <td><strong>${user.name}</strong></td>
+                        <td>${user.email}</td>
+                        <td><span class="badge ${user.role}">${user.role}</span></td>
+                        <td>${date}</td>
+                        <td>
+                            ${user.id !== this.currentUser.id ? `
+                                <button class="btn-secondary" onclick="app.deleteUser(${user.id})" style="background: #ffeaea; color: #dc3545;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            ` : '<em>Current user</em>'}
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('users-table').innerHTML = html;
+        }
+    }
+    
+    async loadMyRequests() {
+        const page = document.getElementById('my-requests-page');
+        page.innerHTML = `
+            <div class="dashboard-grid" style="margin-bottom: 30px;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>My Requests</h3>
+                        <div class="card-icon requestor">
+                            <i class="fas fa-clipboard-list"></i>
+                        </div>
+                    </div>
+                    <div class="card-number" id="my-total-requests">0</div>
+                    <div class="card-subtitle">Total requests submitted</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Pending</h3>
+                        <div class="card-icon requestor">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+                    <div class="card-number" id="my-pending-requests">0</div>
+                    <div class="card-subtitle">Awaiting approval</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Approved</h3>
+                        <div class="card-icon requestor">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                    </div>
+                    <div class="card-number" id="my-approved-requests">0</div>
+                    <div class="card-subtitle">Ready for service</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Completed</h3>
+                        <div class="card-icon requestor">
+                            <i class="fas fa-flag-checkered"></i>
+                        </div>
+                    </div>
+                    <div class="card-number" id="my-completed-requests">0</div>
+                    <div class="card-subtitle">Service finished</div>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>My Service Requests</h3>
+                    <div class="table-actions">
+                        <button class="btn-primary" onclick="app.showPage('new-request')">
+                            <i class="fas fa-plus"></i> New Request
+                        </button>
+                        <button class="btn-secondary" onclick="app.refreshMyRequests()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="my-requests-table">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        `;
+        
+        const requests = await this.apiRequest('/requests/my');
+        if (requests) {
+            // Update stats
+            document.getElementById('my-total-requests').textContent = requests.length;
+            const pending = requests.filter(r => r.status === 'submitted').length;
+            const approved = requests.filter(r => r.status === 'approved').length;
+            const completed = requests.filter(r => r.status === 'completed').length;
+            
+            document.getElementById('my-pending-requests').textContent = pending;
+            document.getElementById('my-approved-requests').textContent = approved;
+            document.getElementById('my-completed-requests').textContent = completed;
+            
+            // Create table
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Vehicle</th>
+                            <th>Type</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            requests.forEach(request => {
+                const date = new Date(request.created_at).toLocaleDateString();
+                html += `
+                    <tr>
+                        <td>#${request.id}</td>
+                        <td>${request.number_plate} (${request.make})</td>
+                        <td>${request.service_type}</td>
+                        <td><span class="badge ${request.priority.replace('_', '-')}">${request.priority.replace('_', ' ')}</span></td>
+                        <td><span class="badge ${request.status}">${request.status}</span></td>
+                        <td>${date}</td>
+                        <td>
+                            <button class="btn-secondary" onclick="app.showRequestDetails(${request.id})">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('my-requests-table').innerHTML = html;
+        }
+    }
+    
+    async loadNewRequestForm() {
+        const page = document.getElementById('new-request-page');
+        const vehicles = await this.apiRequest('/vehicles');
+        
+        let vehicleOptions = '<option value="">Select a vehicle</option>';
+        if (vehicles) {
+            vehicles.forEach(vehicle => {
+                if (vehicle.status === 'active') {
+                    vehicleOptions += `<option value="${vehicle.id}">${vehicle.number_plate} - ${vehicle.make} ${vehicle.model}</option>`;
+                }
+            });
+        }
+        
+        page.innerHTML = `
+            <div class="card" style="max-width: 800px; margin: 0 auto;">
+                <div class="card-header">
+                    <h3><i class="fas fa-plus-circle"></i> New Service Request</h3>
+                </div>
+                <div style="padding: 25px;">
+                    <form id="new-request-form">
+                        <div class="form-row">
+                            <div class="form-group form-full">
+                                <label for="vehicle_id"><i class="fas fa-car"></i> Select Vehicle *</label>
+                                <select id="vehicle_id" required>
+                                    ${vehicleOptions}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="service_type"><i class="fas fa-tools"></i> Service Type *</label>
+                                <select id="service_type" required>
+                                    <option value="preventive">Preventive Maintenance</option>
+                                    <option value="repair">Repair</option>
+                                    <option value="inspection">Inspection</option>
+                                    <option value="emergency">Emergency</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="priority"><i class="fas fa-exclamation-circle"></i> Priority *</label>
+                                <select id="priority" required>
+                                    <option value="scheduled">Scheduled</option>
+                                    <option value="non_scheduled">Non-Scheduled</option>
+                                    <option value="emergency">Emergency</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group form-full">
+                                <label for="description"><i class="fas fa-file-alt"></i> Description *</label>
+                                <textarea id="description" rows="4" placeholder="Describe the service needed, any symptoms, or specific issues..." required></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group form-full">
+                                <label for="photo_url"><i class="fas fa-camera"></i> Photo URL (Optional)</label>
+                                <input type="text" id="photo_url" placeholder="https://example.com/photo.jpg">
+                                <small style="color: #666; margin-top: 5px; display: block;">You can upload a photo to a service like imgur and paste the URL here</small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="button" class="btn-secondary" onclick="app.showPage('my-requests')">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                            <button type="submit" class="btn-primary">
+                                <i class="fas fa-paper-plane"></i> Submit Request
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        
+        // Add form submit handler
+        document.getElementById('new-request-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await this.submitNewRequest();
+        });
+    }
+    
+    async loadMyJobs() {
+        const page = document.getElementById('my-jobs-page');
+        page.innerHTML = `
+            <div class="dashboard-grid" style="margin-bottom: 30px;">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>My Jobs</h3>
+                        <div class="card-icon mechanic">
+                            <i class="fas fa-tools"></i>
+                        </div>
+                    </div>
+                    <div class="card-number" id="my-total-jobs">0</div>
+                    <div class="card-subtitle">Total assigned jobs</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Pending</h3>
+                        <div class="card-icon mechanic">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+                    <div class="card-number" id="my-pending-jobs">0</div>
+                    <div class="card-subtitle">Awaiting start</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3>In Progress</h3>
+                        <div class="card-icon mechanic">
+                            <i class="fas fa-play-circle"></i>
+                        </div>
+                    </div>
+                    <div class="card-number" id="my-inprogress-jobs">0</div>
+                    <div class="card-subtitle">Currently working</div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Completed</h3>
+                        <div class="card-icon mechanic">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                    </div>
+                    <div class="card-number" id="my-completed-jobs">0</div>
+                    <div class="card-subtitle">Finished jobs</div>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <div class="table-header">
+                    <h3>My Assigned Work Orders</h3>
+                    <div class="table-actions">
+                        <button class="btn-secondary" onclick="app.refreshMyJobs()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="my-jobs-table">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        `;
+        
+        const jobs = await this.apiRequest('/work-orders/my');
+        if (jobs) {
+            // Update stats
+            document.getElementById('my-total-jobs').textContent = jobs.length;
+            const pending = jobs.filter(j => j.status === 'pending').length;
+            const inProgress = jobs.filter(j => j.status === 'in_progress').length;
+            const completed = jobs.filter(j => j.status === 'completed' || j.status === 'closed').length;
+            
+            document.getElementById('my-pending-jobs').textContent = pending;
+            document.getElementById('my-inprogress-jobs').textContent = inProgress;
+            document.getElementById('my-completed-jobs').textContent = completed;
+            
+            // Create table
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Vehicle</th>
+                            <th>Description</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Started</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            jobs.forEach(job => {
+                const started = job.started_at ? new Date(job.started_at).toLocaleDateString() : '-';
+                html += `
+                    <tr>
+                        <td>#${job.id}</td>
+                        <td>${job.number_plate} (${job.make})</td>
+                        <td>${job.request_description.substring(0, 50)}${job.request_description.length > 50 ? '...' : ''}</td>
+                        <td><span class="badge ${job.priority.replace('_', '-')}">${job.priority.replace('_', ' ')}</span></td>
+                        <td><span class="badge ${job.status.replace('_', '-')}">${job.status.replace('_', ' ')}</span></td>
+                        <td>${started}</td>
+                        <td>
+                            <button class="btn-secondary" onclick="app.showWorkOrderDetails(${job.id})">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            ${job.status === 'pending' ? `
+                                <button class="btn-primary" onclick="app.updateJobStatus(${job.id}, 'in_progress')">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                            ` : ''}
+                            ${job.status === 'in_progress' ? `
+                                <button class="btn-primary" onclick="app.updateJobStatus(${job.id}, 'completed')">
+                                    <i class="fas fa-flag-checkered"></i>
+                                </button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            document.getElementById('my-jobs-table').innerHTML = html;
+        }
+    }
+    
+    // Modal methods
+    showModal(title, content) {
+        document.getElementById('modal-title').textContent = title;
+        document.getElementById('modal-body').innerHTML = content;
+        document.getElementById('modal').classList.add('active');
+    }
+    
+    hideModal() {
+        document.getElementById('modal').classList.remove('active');
+    }
+    
+    // Action methods (these will be called from onclick handlers)
+    async showRequestDetails(requestId) {
+        const request = await this.apiRequest(`/requests`);
+        const specificRequest = request?.find(r => r.id === requestId);
+        
+        if (specificRequest) {
+            const date = new Date(specificRequest.created_at).toLocaleString();
+            const content = `
+                <div class="request-details">
+                    <div style="display: grid; gap: 15px;">
+                        <div>
+                            <h4 style="margin-bottom: 10px; color: #333;">Request Information</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <p><strong>Request ID:</strong> #${specificRequest.id}</p>
+                                    <p><strong>Requestor:</strong> ${specificRequest.requestor_name}</p>
+                                    <p><strong>Vehicle:</strong> ${specificRequest.number_plate} (${specificRequest.make} ${specificRequest.model})</p>
+                                </div>
+                                <div>
+                                    <p><strong>Service Type:</strong> ${specificRequest.service_type}</p>
+                                    <p><strong>Priority:</strong> <span class="badge ${specificRequest.priority.replace('_', '-')}">${specificRequest.priority.replace('_', ' ')}</span></p>
+                                    <p><strong>Status:</strong> <span class="badge ${specificRequest.status}">${specificRequest.status}</span></p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 style="margin-bottom: 10px; color: #333;">Description</h4>
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                                ${specificRequest.description}
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <p><strong>Submitted:</strong> ${date}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            this.showModal(`Service Request #${requestId}`, content);
+        }
+    }
+    
+    async showWorkOrderDetails(workOrderId) {
+        const workOrder = await this.apiRequest(`/work-orders/${workOrderId}`);
+        
+        if (workOrder) {
+            const started = workOrder.started_at ? new Date(workOrder.started_at).toLocaleString() : 'Not started';
+            const completed = workOrder.completed_at ? new Date(workOrder.completed_at).toLocaleString() : 'Not completed';
+            
+            // Get work logs
+            const logs = await this.apiRequest(`/work-orders/${workOrderId}/logs`);
+            let logsHtml = '<p>No work logs yet.</p>';
+            if (logs && logs.length > 0) {
+                logsHtml = '<div style="max-height: 200px; overflow-y: auto;">';
+                logs.forEach(log => {
+                    const logDate = new Date(log.created_at).toLocaleString();
+                    logsHtml += `
+                        <div style="border-bottom: 1px solid #eee; padding: 10px 0; margin-bottom: 10px;">
+                            <p><strong>${logDate}</strong> - ${log.hours_spent} hours</p>
+                            <p>${log.notes}</p>
+                        </div>
+                    `;
+                });
+                logsHtml += '</div>';
+            }
+            
+            const content = `
+                <div style="display: grid; gap: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <h4 style="margin-bottom: 10px; color: #333;">Work Order Information</h4>
+                            <p><strong>Work Order ID:</strong> #${workOrder.id}</p>
+                            <p><strong>Assigned Mechanic:</strong> ${workOrder.mechanic_name}</p>
+                            <p><strong>Vehicle:</strong> ${workOrder.number_plate} (${workOrder.make} ${workOrder.model})</p>
+                            <p><strong>Status:</strong> <span class="badge ${workOrder.status.replace('_', '-')}">${workOrder.status.replace('_', ' ')}</span></p>
+                        </div>
+                        <div>
+                            <h4 style="margin-bottom: 10px; color: #333;">Timing</h4>
+                            <p><strong>Started:</strong> ${started}</p>
+                            <p><strong>Completed:</strong> ${completed}</p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 style="margin-bottom: 10px; color: #333;">Instructions</h4>
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                            ${workOrder.instructions || 'No specific instructions provided.'}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 style="margin-bottom: 10px; color: #333;">Work Logs</h4>
+                        ${logsHtml}
+                        
+                        ${this.currentUser.role === 'mechanic' && workOrder.status === 'in_progress' ? `
+                            <div style="margin-top: 15px; padding: 15px; background: #f0f4f9; border-radius: 8px;">
+                                <h5 style="margin-bottom: 10px;">Add Work Log</h5>
+                                <div style="display: grid; gap: 10px;">
+                                    <textarea id="log-notes" rows="3" placeholder="Describe the work performed..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+                                    <div style="display: flex; gap: 10px; align-items: center;">
+                                        <input type="number" id="log-hours" placeholder="Hours spent" step="0.5" min="0" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 120px;">
+                                        <button class="btn-primary" onclick="app.addWorkLog(${workOrderId})" style="padding: 10px 20px;">
+                                            <i class="fas fa-plus"></i> Add Log
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            
+            this.showModal(`Work Order #${workOrderId}`, content);
+        }
+    }
+    
+    async approveRequest(requestId) {
+        if (confirm('Approve this service request?')) {
+            const result = await this.apiRequest(`/requests/${requestId}/approve`, {
+                method: 'PUT'
+            });
+            
+            if (result) {
+                alert('Request approved successfully!');
+                this.refreshRequests();
+            }
+        }
+    }
+    
+    async rejectRequest(requestId) {
+        if (confirm('Reject this service request?')) {
+            const result = await this.apiRequest(`/requests/${requestId}/reject`, {
+                method: 'PUT'
+            });
+            
+            if (result) {
+                alert('Request rejected successfully!');
+                this.refreshRequests();
+            }
+        }
+    }
+    
+    async updateJobStatus(jobId, status) {
+        const result = await this.apiRequest(`/work-orders/${jobId}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ status })
+        });
+        
+        if (result) {
+            alert(`Job status updated to ${status.replace('_', ' ')}`);
+            this.refreshMyJobs();
+        }
+    }
+    
+    async addWorkLog(workOrderId) {
+        const notes = document.getElementById('log-notes')?.value;
+        const hours = document.getElementById('log-hours')?.value;
+        
+        if (!notes) {
+            alert('Please enter notes for the work log');
+            return;
+        }
+        
+        const result = await this.apiRequest(`/work-orders/${workOrderId}/logs`, {
+            method: 'POST',
+            body: JSON.stringify({
+                notes,
+                hours_spent: hours ? parseFloat(hours) : 0
+            })
+        });
+        
+        if (result) {
+            alert('Work log added successfully!');
+            this.hideModal();
+            this.showWorkOrderDetails(workOrderId);
+        }
+    }
+    
+    async submitNewRequest() {
+        const vehicle_id = document.getElementById('vehicle_id').value;
+        const service_type = document.getElementById('service_type').value;
+        const priority = document.getElementById('priority').value;
+        const description = document.getElementById('description').value;
+        const photo_url = document.getElementById('photo_url').value;
+        
+        if (!vehicle_id || !service_type || !priority || !description) {
+            alert('Please fill all required fields');
+            return;
+        }
+        
+        const result = await this.apiRequest('/requests', {
+            method: 'POST',
+            body: JSON.stringify({
+                vehicle_id,
+                service_type,
+                priority,
+                description,
+                photo_url: photo_url || null
+            })
+        });
+        
+        if (result) {
+            alert('Service request submitted successfully!');
+            this.showPage('my-requests');
+        }
+    }
+    
+    // Refresh methods
+    refreshRequests() { this.loadServiceRequests(); }
+    refreshWorkOrders() { this.loadWorkOrders(); }
+    refreshVehicles() { this.loadVehicles(); }
+    refreshUsers() { this.loadUsers(); }
+    refreshMyRequests() { this.loadMyRequests(); }
+    refreshMyJobs() { this.loadMyJobs(); }
+}
+
+// Initialize the app when page loads
+let app;
+document.addEventListener('DOMContentLoaded', () => {
+    app = new UNGarageApp();
+});
