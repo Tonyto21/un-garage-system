@@ -34,4 +34,4 @@ node server.js
 
 # In another terminal:
 cd frontend
-python -m http.server 8000
+python -m http.server 8000# un-garage-system
