@@ -4,7 +4,7 @@ class UNGarageApp {
         this.currentUser = null;
         this.token = null;
         this.currentPage = 'dashboard';
-        this.apiBase = 'http://localhost:3000';
+        this.apiBase = 'https://un-garage-system-xh9q.onrender.com';
         
         this.initializeApp();
     }
@@ -107,7 +107,7 @@ class UNGarageApp {
             }
         } catch (error) {
             console.error('Login error:', error);
-            alert('Network error. Make sure backend is running on http://localhost:3000');
+            alert('Network error. Make sure backend is running on https://un-garage-system-xh9q.onrender.com');
         } finally {
             loginBtn.innerHTML = originalText;
             loginBtn.disabled = false;
