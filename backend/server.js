@@ -35,24 +35,19 @@ app.use('/work-orders', workOrderRoutes);
 const statsRoutes = require('./routes/stats');
 app.use('/stats', statsRoutes);
 
-// Welcome route
-app.get('/', (req, res) => {
-    res.json({
-        message: 'UN Garage Management System API',
-        version: '1.0.0',
-        endpoints: {
-            auth: '/auth/login, /auth/logout, /auth/me',
-            users: '/users (admin only)',
-            vehicles: '/vehicles',
-            requests: '/requests, /requests/my (requestor only)',
-            workOrders: '/work-orders, /work-orders/my (mechanic only)'
-        }
-    });
-});
+// --- NEW CODE TO SERVE FRONTEND ---
+// Serve static frontend files (CSS, JS, images)
+app.use(express.static(path.join(__dirname, '../frontend')));
 
-// 404 handler
+// For any route not handled by API, send the frontend HTML
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+});
+// ---------------------------------
+
+// 404 handler (this will only run for API routes that don't exist)
 app.use((req, res) => {
-    res.status(404).json({ error: 'Route not found' });
+    res.status(404).json({ error: 'API route not found' });
 });
 
 // Error handler
