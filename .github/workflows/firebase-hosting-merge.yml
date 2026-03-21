@@ -17,3 +17,5 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_UN_HOUSE_GARAGE_MGT_SYSTEM_26 }}
           channelId: live
           projectId: un-house-garage-mgt-system-26
+	  debug: true  # <--- ADD THIS LINE
+          # ... (other 'with' parameters if present)
